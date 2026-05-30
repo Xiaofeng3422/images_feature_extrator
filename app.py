@@ -39,9 +39,8 @@ COZE_URL = "https://api.coze.cn/v1/workflow/run" # 国内版URL（国际版请�
 
 # ================= 3. 核心逻辑：图片转码与API调用 =================
 def call_coze_workflow(image_file):
-    """将图片转化为Base64并调用Coze工作流"""
+    """将图片转化为Base64并调用Coze工作流 (侦探调试版)"""
     try:
-        # 将本地图片转化为Base64字符串，方便大模型直接读取
         bytes_data = image_file.read()
         base64_image = base64.b64encode(bytes_data).decode('utf-8')
         
@@ -50,7 +49,7 @@ def call_coze_workflow(image_file):
             "Content-Type": "application/json"
         }
         
-        # 这里的参数名 'image_input' 必须与你在Coze工作流Start节点中定义的完全一致
+        # 传递给工作流的参数
         payload = {
             "workflow_id": WORKFLOW_ID,
             "parameters": {
@@ -61,19 +60,31 @@ def call_coze_workflow(image_file):
         response = requests.post(COZE_URL, headers=headers, json=payload)
         if response.status_code == 200:
             res_json = response.json()
-            # 解析Coze工作流返回的End节点数据
-            # 这里的 'data' 通常是工作流最终吐出的字符串
+            
+            # 🔍 侦探点1：检查 Coze 内部业务是否报错
+            if res_json.get("code") != 0:
+                return f"Coze内部报错: {res_json.get('msg')}"
+                
             output_str = res_json.get("data", "")
-            # 尝试解析可能包裹在里面的JSON结果
+            
+            # 🔍 侦探点2：检查有没有数据返回
+            if not output_str:
+                return "工作流运行成功，但输出内容完全为空"
+                
+            # 🔍 侦探点3：检查输出的变量名对不对
             try:
                 output_data = json.loads(output_str)
-                return output_data.get("result_keywords", "未提取到标签")
+                if "result_keywords" in output_data:
+                    return output_data["result_keywords"]
+                else:
+                    return f"找不到变量 result_keywords。实际返回的变量是: {list(output_data.keys())}"
             except:
-                return output_str # 如果是纯文本则直接返回
+                # 如果返回的不是字典，直接显示原始文字
+                return f"直接返回(非JSON): {output_str}"
         else:
-            return f"错误: API响应状态码 {response.status_code}"
+            return f"网络状态码异常: {response.status_code}"
     except Exception as e:
-        return f"处理失败: {str(e)}"
+        return f"代码异常: {str(e)}"
 
 # ================= 4. 前端交互界面 =================
 # 支持拖拽和多选上传
