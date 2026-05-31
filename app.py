@@ -11,7 +11,7 @@ import os
 import matplotlib.pyplot as plt
 
 # ================= 1. 治愈系与科技蓝视觉配置 =================
-st.set_page_config(page_title="智能影像聚类系统", page_icon="🌿", layout="wide")
+st.set_page_config(page_title="心生态 | 影像聚类系统", page_icon="🌿", layout="wide")
 
 st.markdown("""
     <style>
@@ -29,16 +29,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🌿 智能影像特征聚类系统")
+st.title("🌿 心生态 | 智能影像特征聚类系统")
 st.markdown("基于大语言模型视觉网络，批量提取图片多维心理与实体特征，并自动生成结构化聚类图谱。")
 
 # ================= 2. 后台配置（请替换为您的真实数据） =================
-COZE_API_KEY = "cztei_qKrhOhdsGKIqlOeCuI2GZlzrUVDmfiyjfQosJziySKDLS3tmt5oJkyIJtSUiKmHNo"  # 填入第一步获取的Token
-WORKFLOW_ID = "7645903007834996762"  
+COZE_API_KEY = "cztei_hRvZxn2znIoeMGk4ENdDQiZJIkwP38jv2tOrecqEKIj8OlVlnnKlV18d2JZwWGKKd"  # 👈 请务必替换为你的真实 Token
+WORKFLOW_ID = "7645903007834996762"         # 👈 请务必替换为你的真实 工作流 ID
 UPLOAD_URL = "https://api.coze.cn/v1/files/upload"
 COZE_URL = "https://api.coze.cn/v1/workflow/run"
 
-# ================= 3. 核心通讯逻辑：两步走战略 =================
 # ================= 3. 核心通讯逻辑：两步走战略 =================
 def upload_to_coze(image_file):
     """步骤一：将图片寄存至 Coze 获取 File ID"""
@@ -61,10 +60,15 @@ def call_coze_workflow(file_id):
         "Authorization": f"Bearer {COZE_API_KEY}",
         "Content-Type": "application/json"
     }
+    
+    # 💡 核心修复点：Coze 官方 API 对 Image 类型的严苛潜规则
+    # 键名必须是 "file_id"，并且整体必须转换为字符串
+    image_param = json.dumps({"file_id": file_id})
+    
     payload = {
         "workflow_id": WORKFLOW_ID,
         "parameters": {
-            "image_input": file_id
+            "image_input": image_param
         }
     }
     
@@ -94,7 +98,7 @@ if uploaded_files:
     
     if st.button("🚀 启动特征提取与生态聚类"):
         results = []
-        all_keywords = [] # 用于收集所有词汇做聚类
+        all_keywords = []
         
         progress_bar = st.progress(0)
         status_text = st.empty()
@@ -103,18 +107,18 @@ if uploaded_files:
         for index, file in enumerate(uploaded_files):
             status_text.markdown(f"**正在解析 ({index+1}/{len(uploaded_files)}):** `{file.name}` ...")
             
-            # 1. 上传图片拿 ID
+            # 1. 寄存拿凭条
             file_id = upload_to_coze(file)
             
             if "Error" in file_id:
                 keywords = f"寄存失败: {file_id}"
                 status = "❌ 失败"
             else:
-                # 2. 拿 ID 去提词
+                # 2. 呼叫大模型
                 keywords = call_coze_workflow(file_id)
                 status = "✅ 成功" if "Error" not in keywords else "❌ 失败"
                 
-                # 清洗特征词并加入总库
+                # 收集词汇用于画图
                 if status == "✅ 成功":
                     words = [w.strip() for w in keywords.replace('，', ',').split(',') if w.strip()]
                     all_keywords.extend(words)
@@ -126,17 +130,15 @@ if uploaded_files:
                 "特征聚类词组": keywords
             })
             
-            # 实时更新表格与进度
             df_results = pd.DataFrame(results)
             table_placeholder.dataframe(df_results, use_container_width=True)
             progress_bar.progress((index + 1) / len(uploaded_files))
             
-            # 防止 API 速率限制，每次请求间隔 1.5 秒
+            # 保护机制：每跑一张休息 1.5 秒，防止 50 张并发压垮 API
             time.sleep(1.5)
             
         status_text.success("🎉 全套影像特征提取与聚类分析已完成！")
         
-        # 导出按钮
         csv = df_results.to_csv(index=False).encode('utf-8-sig')
         st.download_button("📥 导出明细报表 (Excel/CSV)", data=csv, file_name="心生态_影像特征报表.csv", mime="text/csv")
         
@@ -147,15 +149,17 @@ if uploaded_files:
             
             col1, col2 = st.columns(2)
             
-            # 自动下载中文字体（解决 Streamlit 云端乱码问题）
+            # 自动下载中文字体，防止云端出现乱码方块
             font_path = "SimHei.ttf"
             if not os.path.exists(font_path):
-                urllib.request.urlretrieve("https://raw.githubusercontent.com/StellarCN/scp_zh/master/fonts/SimHei.ttf", font_path)
+                try:
+                    urllib.request.urlretrieve("https://raw.githubusercontent.com/StellarCN/scp_zh/master/fonts/SimHei.ttf", font_path)
+                except:
+                    font_path = None
             
             with col1:
                 st.markdown("<div class='stat-box'><h4>☁️ 特征词云聚类</h4></div>", unsafe_allow_html=True)
                 word_counts = Counter(all_keywords)
-                # 使用科技蓝/治愈系配色生成词云
                 wc = WordCloud(font_path=font_path, background_color="white", 
                                width=800, height=600, colormap="ocean_r", max_words=100)
                 wc.generate_from_frequencies(word_counts)
@@ -167,10 +171,8 @@ if uploaded_files:
 
             with col2:
                 st.markdown("<div class='stat-box'><h4>🔥 核心特征热力分布</h4></div>", unsafe_allow_html=True)
-                # 取高频前 15 个词绘制热力矩阵
                 top_15_words = [word for word, count in word_counts.most_common(15)]
                 
-                # 构建热力图矩阵数据 (图片 vs 特征词)
                 heatmap_data = []
                 for res in results:
                     if res["状态"] == "✅ 成功":
@@ -183,7 +185,6 @@ if uploaded_files:
                 df_heatmap = pd.DataFrame(heatmap_data)
                 if not df_heatmap.empty:
                     df_heatmap.set_index("图片名称", inplace=True)
-                    # 绘制交互式科技蓝热力图
                     fig_hm = px.imshow(df_heatmap, 
                                        color_continuous_scale="Blues",
                                        aspect="auto",
