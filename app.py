@@ -38,12 +38,15 @@ WORKFLOW_ID = "7645693886925750322"                 # 填入第一步获取的ID
 COZE_URL = "https://api.coze.cn/v1/workflow/run" # 国内版URL（国际版请改为 api.coze.com）
 
 # ================= 3. 核心逻辑：图片转码与API调用 =================
-# ================= 3. 核心逻辑：图片转码与API调用 =================
 def call_coze_workflow(image_file):
     """将图片转化为Base64并调用Coze工作流"""
     try:
         bytes_data = image_file.read()
         base64_image = base64.b64encode(bytes_data).decode('utf-8')
+        
+        # 💡 优化点 1：自动识别并适配 PNG/JPG 格式，防止大模型傲娇
+        file_extension = image_file.name.split('.')[-1].lower()
+        mime_type = "image/png" if file_extension == "png" else "image/jpeg"
         
         headers = {
             "Authorization": f"Bearer {COZE_API_KEY}",
@@ -53,7 +56,7 @@ def call_coze_workflow(image_file):
         payload = {
             "workflow_id": WORKFLOW_ID,
             "parameters": {
-                "image_input": f"data:image/jpeg;base64,{base64_image}"
+                "image_input": f"data:{mime_type};base64,{base64_image}"
             }
         }
         
@@ -61,15 +64,16 @@ def call_coze_workflow(image_file):
         if response.status_code == 200:
             res_json = response.json()
             
-            # 🔍 终极解析方案
+            # 💡 优化点 2：撕下伪装，直接把 Coze 的内部报错打印出来！
+            if str(res_json.get("code")) != "0":
+                return f"❌ Coze拒绝执行: {res_json.get('msg')}"
+            
             output_str = res_json.get("data", "")
             if not output_str:
-                return "未收到数据，请检查Start节点是否已改为String类型"
+                return f"⚠️ 接口返回为空，完整原始信息: {res_json}"
                 
             try:
-                # 尝试解析 JSON 格式
                 output_data = json.loads(output_str)
-                # 优先寻找 result_keywords，找不到就找 output，再找不到就把全部内容展示出来
                 if "result_keywords" in output_data:
                     return output_data["result_keywords"]
                 elif "output" in output_data:
@@ -77,10 +81,9 @@ def call_coze_workflow(image_file):
                 else:
                     return f"提取成功: {output_data}"
             except:
-                # 如果是纯文本，直接剥离两边的引号返回
                 return output_str.strip('"')
         else:
-            return f"网络状态码异常: {response.status_code}"
+            return f"网络异常: 状态码 {response.status_code} - {response.text}"
             
     except Exception as e:
         return f"代码异常: {str(e)}"
