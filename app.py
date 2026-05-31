@@ -33,8 +33,8 @@ st.title("🎨 智能影像特征深度提取系统")
 st.markdown("欢迎使用本系统。请在下方批量上传本地图片，系统将通过后端大模型视觉网络，为您自动转化为结构化的特征词组。")
 
 # ================= 2. 后台配置（请替换为您自己的凭证） =================
-COZE_API_KEY = "pat_xtIkaIOtOvrwtxLl3VUp3uy2XmqPmDUmRg9u6ePR9oBaOfDIC11xILn8yvQ0QQAW"  # 填入第一步获取的Token
-WORKFLOW_ID = "7645693886925750322"                 # 填入第一步获取的ID
+COZE_API_KEY = "cztei_hANENEgZJFgHwGMeKzW2H2rLCJ8o3dvqPdZAOteOJ4cFHn4O7zLcanFUH0A2O8feZ"  # 填入第一步获取的Token
+WORKFLOW_ID = "7645903007834996762"                 # 填入第一步获取的ID
 COZE_URL = "https://api.coze.cn/v1/workflow/run" # 国内版URL（国际版请改为 api.coze.com）
 
 # ================= 3. 核心逻辑：图片转码与API调用 =================
