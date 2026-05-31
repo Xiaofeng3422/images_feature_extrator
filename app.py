@@ -60,10 +60,10 @@ def call_coze_workflow(file_id):
         "Authorization": f"Bearer {COZE_API_KEY}",
         "Content-Type": "application/json"
     }
-    payload = {
+   payload = {
         "workflow_id": WORKFLOW_ID,
         "parameters": {
-            "image_input": json.dumps({"id": file_id})
+            "image_input": file_id  # 👈 直接传寄存拿到的 file_id 字符串即可
         }
     }
     
