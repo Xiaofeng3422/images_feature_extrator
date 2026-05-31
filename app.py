@@ -36,18 +36,37 @@ st.markdown("欢迎使用本系统。请在下方批量上传本地图片，系�
 COZE_API_KEY = "cztei_hANENEgZJFgHwGMeKzW2H2rLCJ8o3dvqPdZAOteOJ4cFHn4O7zLcanFUH0A2O8feZ"  # 填入第一步获取的Token
 WORKFLOW_ID = "7645903007834996762"                 # 填入第一步获取的ID
 COZE_URL = "https://api.coze.cn/v1/workflow/run" # 国内版URL（国际版请改为 api.coze.com）
+UPLOAD_URL = "https://api.coze.cn/v1/files/upload"
 
 # ================= 3. 核心逻辑：图片转码与API调用 =================
+def upload_to_coze(image_file):
+    """第一步：将图片存入 Coze 换取文件凭条 (File ID)"""
+    headers = {
+        "Authorization": f"Bearer {COZE_API_KEY}"
+    }
+    # 准备文件数据
+    image_file.seek(0)
+    files = {
+        "file": (image_file.name, image_file, image_file.type)
+    }
+    # 请求上传接口
+    response = requests.post(UPLOAD_URL, headers=headers, files=files)
+    if response.status_code == 200:
+        res_json = response.json()
+        if res_json.get("code") == 0:
+            return res_json["data"]["id"] # 成功拿到凭条
+        else:
+            raise Exception(f"寄存失败: {res_json.get('msg')}")
+    else:
+        raise Exception(f"上传接口异常: {response.status_code}")
+
 def call_coze_workflow(image_file):
-    """将图片转化为Base64并调用Coze工作流"""
+    """第二步：拿着凭条去调用工作流"""
     try:
-        bytes_data = image_file.read()
-        base64_image = base64.b64encode(bytes_data).decode('utf-8')
+        # 1. 先去寄存处拿 File ID
+        file_id = upload_to_coze(image_file)
         
-        # 💡 优化点 1：自动识别并适配 PNG/JPG 格式，防止大模型傲娇
-        file_extension = image_file.name.split('.')[-1].lower()
-        mime_type = "image/png" if file_extension == "png" else "image/jpeg"
-        
+        # 2. 拿着 File ID 呼叫大模型
         headers = {
             "Authorization": f"Bearer {COZE_API_KEY}",
             "Content-Type": "application/json"
@@ -56,7 +75,7 @@ def call_coze_workflow(image_file):
         payload = {
             "workflow_id": WORKFLOW_ID,
             "parameters": {
-                "image_input": f"data:{mime_type};base64,{base64_image}"
+                "image_input": file_id  # 直接把凭条交给工作流
             }
         }
         
@@ -64,14 +83,15 @@ def call_coze_workflow(image_file):
         if response.status_code == 200:
             res_json = response.json()
             
-            # 💡 优化点 2：撕下伪装，直接把 Coze 的内部报错打印出来！
+            # 校验报错
             if str(res_json.get("code")) != "0":
-                return f"❌ Coze拒绝执行: {res_json.get('msg')}"
-            
+                return f"❌ 工作流拒绝: {res_json.get('msg')}"
+                
             output_str = res_json.get("data", "")
             if not output_str:
-                return f"⚠️ 接口返回为空，完整原始信息: {res_json}"
+                return f"⚠️ 接口返回为空"
                 
+            # 解析特征词
             try:
                 output_data = json.loads(output_str)
                 if "result_keywords" in output_data:
@@ -79,17 +99,15 @@ def call_coze_workflow(image_file):
                 elif "output" in output_data:
                     return output_data["output"]
                 else:
-                    return f"提取成功: {output_data}"
+                    return f"成功: {output_data}"
             except:
                 return output_str.strip('"')
         else:
-            return f"网络异常: 状态码 {response.status_code} - {response.text}"
+            return f"网络异常: 状态码 {response.status_code}"
             
     except Exception as e:
         return f"代码异常: {str(e)}"
-
-# ================= 4. 前端交互界面 =================
-
+        
 # ================= 4. 前端交互界面 =================
 # 支持拖拽和多选上传
 uploaded_files = st.file_uploader(
