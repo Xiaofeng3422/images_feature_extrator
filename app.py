@@ -55,7 +55,7 @@ st.title("🌿 心生态 | 智能影像特征聚类系统")
 st.markdown("<p style='color:#666; font-size:16px;'>基于大语言模型视觉网络，深度解析图文心像，自动构建结构化心理生态图谱。</p>", unsafe_allow_html=True)
 
 # ================= 2. 后台配置（请替换为您的真实数据） =================
-COZE_API_KEY = "cztei_lPL5NhrB758BZvgWdCJy1tkorjNLz4dRlxLhVRMxRRmgjshKGwNkHsoSyDtapz7Pp"  # 👈 替换为真实 Token
+COZE_API_KEY = "pat_xtIkaIOtOvrwtxLl3VUp3uy2XmqPmDUmRg9u6ePR9oBaOfDIC11xILn8yvQ0QQAW"  # 👈 替换为真实 Token
 WORKFLOW_ID = "7645903007834996762"         # 👈 替换为真实 工作流 ID
 UPLOAD_URL = "https://api.coze.cn/v1/files/upload"
 COZE_URL = "https://api.coze.cn/v1/workflow/run"
