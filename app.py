@@ -72,10 +72,11 @@ def call_coze_workflow(image_file):
             "Content-Type": "application/json"
         }
         
-        payload = {
+       payload = {
             "workflow_id": WORKFLOW_ID,
             "parameters": {
-                "image_input": file_id  # 直接把凭条交给工作流
+                # 终极奥义：把它包装成大模型要求的官方 JSON 对象格式
+                "image_input": json.dumps({"id": file_id}) 
             }
         }
         
