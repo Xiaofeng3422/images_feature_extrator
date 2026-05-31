@@ -38,8 +38,9 @@ WORKFLOW_ID = "7645693886925750322"                 # 填入第一步获取的ID
 COZE_URL = "https://api.coze.cn/v1/workflow/run" # 国内版URL（国际版请改为 api.coze.com）
 
 # ================= 3. 核心逻辑：图片转码与API调用 =================
+# ================= 3. 核心逻辑：图片转码与API调用 =================
 def call_coze_workflow(image_file):
-    """将图片转化为Base64并调用Coze工作流 (侦探调试版)"""
+    """将图片转化为Base64并调用Coze工作流"""
     try:
         bytes_data = image_file.read()
         base64_image = base64.b64encode(bytes_data).decode('utf-8')
@@ -49,7 +50,6 @@ def call_coze_workflow(image_file):
             "Content-Type": "application/json"
         }
         
-        # 传递给工作流的参数
         payload = {
             "workflow_id": WORKFLOW_ID,
             "parameters": {
@@ -61,17 +61,6 @@ def call_coze_workflow(image_file):
         if response.status_code == 200:
             res_json = response.json()
             
-            # 🔍 侦探点1：检查 Coze 内部业务是否报错
-            if res_json.get("code") != 0:
-                return f"Coze内部报错: {res_json.get('msg')}"
-                
-            output_str = res_json.get("data", "")
-            
-            # 🔍 侦探点2：检查有没有数据返回
-            if not output_str:
-                return "工作流运行成功，但输出内容完全为空"
-                
-            # 🔍 侦探点3：检查输出的变量名对不对
             # 🔍 终极解析方案
             output_str = res_json.get("data", "")
             if not output_str:
@@ -90,6 +79,13 @@ def call_coze_workflow(image_file):
             except:
                 # 如果是纯文本，直接剥离两边的引号返回
                 return output_str.strip('"')
+        else:
+            return f"网络状态码异常: {response.status_code}"
+            
+    except Exception as e:
+        return f"代码异常: {str(e)}"
+
+# ================= 4. 前端交互界面 =================
 
 # ================= 4. 前端交互界面 =================
 # 支持拖拽和多选上传
