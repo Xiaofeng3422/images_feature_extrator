@@ -33,7 +33,7 @@ st.title("🌿 智能影像特征聚类系统")
 st.markdown("基于大语言模型视觉网络，批量提取图片多维心理与实体特征，并自动生成结构化聚类图谱。")
 
 # ================= 2. 后台配置（请替换为您的真实数据） =================
-COZE_API_KEY = "cztei_hANENEgZJFgHwGMeKzW2H2rLCJ8o3dvqPdZAOteOJ4cFHn4O7zLcanFUH0A2O8feZ"  # 填入第一步获取的Token
+COZE_API_KEY = "cztei_qKrhOhdsGKIqlOeCuI2GZlzrUVDmfiyjfQosJziySKDLS3tmt5oJkyIJtSUiKmHNo"  # 填入第一步获取的Token
 WORKFLOW_ID = "7645903007834996762"  
 UPLOAD_URL = "https://api.coze.cn/v1/files/upload"
 COZE_URL = "https://api.coze.cn/v1/workflow/run"
