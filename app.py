@@ -72,19 +72,24 @@ def call_coze_workflow(image_file):
                 return "工作流运行成功，但输出内容完全为空"
                 
             # 🔍 侦探点3：检查输出的变量名对不对
+            # 🔍 终极解析方案
+            output_str = res_json.get("data", "")
+            if not output_str:
+                return "未收到数据，请检查Start节点是否已改为String类型"
+                
             try:
+                # 尝试解析 JSON 格式
                 output_data = json.loads(output_str)
+                # 优先寻找 result_keywords，找不到就找 output，再找不到就把全部内容展示出来
                 if "result_keywords" in output_data:
                     return output_data["result_keywords"]
+                elif "output" in output_data:
+                    return output_data["output"]
                 else:
-                    return f"找不到变量 result_keywords。实际返回的变量是: {list(output_data.keys())}"
+                    return f"提取成功: {output_data}"
             except:
-                # 如果返回的不是字典，直接显示原始文字
-                return f"直接返回(非JSON): {output_str}"
-        else:
-            return f"网络状态码异常: {response.status_code}"
-    except Exception as e:
-        return f"代码异常: {str(e)}"
+                # 如果是纯文本，直接剥离两边的引号返回
+                return output_str.strip('"')
 
 # ================= 4. 前端交互界面 =================
 # 支持拖拽和多选上传
