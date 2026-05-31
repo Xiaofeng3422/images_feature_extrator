@@ -39,6 +39,7 @@ UPLOAD_URL = "https://api.coze.cn/v1/files/upload"
 COZE_URL = "https://api.coze.cn/v1/workflow/run"
 
 # ================= 3. 核心通讯逻辑：两步走战略 =================
+# ================= 3. 核心通讯逻辑：两步走战略 =================
 def upload_to_coze(image_file):
     """步骤一：将图片寄存至 Coze 获取 File ID"""
     headers = {"Authorization": f"Bearer {COZE_API_KEY}"}
@@ -60,10 +61,10 @@ def call_coze_workflow(file_id):
         "Authorization": f"Bearer {COZE_API_KEY}",
         "Content-Type": "application/json"
     }
-   payload = {
+    payload = {
         "workflow_id": WORKFLOW_ID,
         "parameters": {
-            "image_input": file_id  # 👈 直接传寄存拿到的 file_id 字符串即可
+            "image_input": file_id
         }
     }
     
