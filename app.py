@@ -11,7 +11,7 @@ import os
 import matplotlib.pyplot as plt
 
 # ================= 1. 治愈系与科技蓝视觉配置 =================
-st.set_page_config(page_title="重智·心生态 | 影像聚类系统", page_icon="🌿", layout="wide")
+st.set_page_config(page_title="智能影像聚类系统", page_icon="🌿", layout="wide")
 
 st.markdown("""
     <style>
@@ -29,7 +29,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🌿 重智·心生态 | 智能影像特征聚类系统")
+st.title("🌿 智能影像特征聚类系统")
 st.markdown("基于大语言模型视觉网络，批量提取图片多维心理与实体特征，并自动生成结构化聚类图谱。")
 
 # ================= 2. 后台配置（请替换为您的真实数据） =================
