@@ -37,7 +37,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🌿 重智·心生态 | 智能影像特征聚类系统")
+st.title("🌿 心生态 | 智能影像特征聚类系统")
 st.markdown("<p style='color:#666; font-size:16px;'>基于大语言模型视觉网络，深度解析图文心像，自动构建结构化心理生态图谱。</p>", unsafe_allow_html=True)
 
 # ================= 2. 后台配置（👇 记得替换为真实数据 👇） =================
