@@ -9,6 +9,9 @@ from wordcloud import WordCloud
 import urllib.request
 import os
 import matplotlib.pyplot as plt
+import networkx as nx
+import itertools
+import plotly.graph_objects as go
 
 # ================= 1. 治愈系与科技蓝视觉配置 (沉浸式 UI) =================
 st.set_page_config(page_title="心生态 | 影像聚类系统", page_icon="🌿", layout="wide")
@@ -196,38 +199,85 @@ with tab2:
                                 except:
                                     font_path = None
                             
-                            with col_left:
-                                st.markdown("<div class='stat-box'><h4>☁️ 心境特征星云</h4></div>", unsafe_allow_html=True)
-                                word_counts = Counter(all_keywords)
-                                wc = WordCloud(font_path=font_path, background_color="rgba(255, 255, 255, 0)", mode="RGBA",
-                                               width=800, height=600, colormap="GnBu", max_words=80) 
-                                wc.generate_from_frequencies(word_counts)
-                                
-                                fig_wc, ax = plt.subplots(figsize=(8, 6))
-                                fig_wc.patch.set_alpha(0) 
-                                ax.imshow(wc, interpolation="bilinear")
-                                ax.axis("off")
-                                st.pyplot(fig_wc)
-
+                           # ================= 新图表：心智神经网络 (共现关系网络图) =================
                             with col_right:
-                                st.markdown("<div class='stat-box'><h4>🔥 核心要素频次热力</h4></div>", unsafe_allow_html=True)
-                                top_15_words = [word for word, count in word_counts.most_common(12)] 
+                                st.markdown("<div class='stat-box'><h4>🕸️ 核心特征共现网络</h4></div>", unsafe_allow_html=True)
                                 
-                                heatmap_data = []
+                                # 1. 统计特征词频与共现频次
+                                co_occurrences = {}
+                                node_weights = Counter()
+                                
                                 for res in valid_results:
-                                    row_data = {"样本标号": res["name"]}
-                                    for tw in top_15_words:
-                                        row_data[tw] = 1 if tw in res["words"] else 0
-                                    heatmap_data.append(row_data)
+                                    words = res["words"]
+                                    for w in words:
+                                        node_weights[w] += 1
+                                    
+                                    # 利用排列组合，找出同一幅画中同时出现的词对
+                                    pairs = list(itertools.combinations(set(words), 2))
+                                    for pair in pairs:
+                                        pair = tuple(sorted(pair)) # 排序保证 (A,B) 和 (B,A) 算同一个
+                                        co_occurrences[pair] = co_occurrences.get(pair, 0) + 1
                                 
-                                df_heatmap = pd.DataFrame(heatmap_data)
-                                if not df_heatmap.empty:
-                                    df_heatmap.set_index("样本标号", inplace=True)
-                                    fig_hm = px.imshow(df_heatmap, 
-                                                       color_continuous_scale="Teal", 
-                                                       aspect="auto",
-                                                       labels=dict(x="要素维度", y="样本", color="触发律"))
-                                    fig_hm.update_layout(margin=dict(l=10, r=10, t=10, b=10), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-                                    st.plotly_chart(fig_hm, use_container_width=True)
-        except Exception as e:
-            st.error(f"⚠️ 文件流读取异常: {e}")
+                                # 为了防止连线密集成“毛线球”，我们提取出现频次最高的前 25 个核心词
+                                top_nodes = [w for w, c in node_weights.most_common(25)]
+                                
+                                # 2. 构建 NetworkX 图模型
+                                G = nx.Graph()
+                                for node in top_nodes:
+                                    G.add_node(node, size=node_weights[node])
+                                    
+                                for (w1, w2), weight in co_occurrences.items():
+                                    if w1 in top_nodes and w2 in top_nodes and weight >= 1:
+                                        G.add_edge(w1, w2, weight=weight)
+                                        
+                                if len(G.nodes) > 0:
+                                    # 使用弹簧布局算法 (Spring Layout) 自动计算节点的优美排版
+                                    pos = nx.spring_layout(G, k=0.8, iterations=50, seed=42)
+                                    
+                                    # 3. 将 NetworkX 数据转化为 Plotly 惊艳的交互图
+                                    edge_x, edge_y = [], []
+                                    for edge in G.edges():
+                                        x0, y0 = pos[edge[0]]
+                                        x1, y1 = pos[edge[1]]
+                                        edge_x.extend([x0, x1, None])
+                                        edge_y.extend([y0, y1, None])
+                                        
+                                    # 绘制突触连线
+                                    edge_trace = go.Scatter(
+                                        x=edge_x, y=edge_y,
+                                        line=dict(width=1.2, color='rgba(107, 163, 184, 0.4)'), # 治愈系半透明连线
+                                        hoverinfo='none', mode='lines')
+                                        
+                                    # 绘制神经元节点
+                                    node_x, node_y, node_text, node_size = [], [], [], []
+                                    for node in G.nodes():
+                                        x, y = pos[node]
+                                        node_x.append(x)
+                                        node_y.append(y)
+                                        node_text.append(node)
+                                        # 节点大小随词频动态放大
+                                        node_size.append(G.nodes[node]['size'] * 3.5 + 12) 
+                                        
+                                    node_trace = go.Scatter(
+                                        x=node_x, y=node_y, mode='markers+text',
+                                        text=node_text, textposition="top center", hoverinfo='text',
+                                        textfont=dict(family="SimHei, sans-serif", size=13, color="#2c3e50"),
+                                        marker=dict(
+                                            showscale=False, color='#5c8fb9', size=node_size,
+                                            line_width=2, line_color='white',
+                                            # 添加呼吸灯一样的发光阴影特效
+                                            boxshadow="0px 0px 10px rgba(92, 143, 185, 0.6)" 
+                                        ))
+                                            
+                                    fig_net = go.Figure(data=[edge_trace, node_trace],
+                                                 layout=go.Layout(
+                                                    showlegend=False, hovermode='closest',
+                                                    margin=dict(b=10,l=10,r=10,t=10),
+                                                    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+                                                    xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                                                    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+                                                    )
+                                    # 去除点击图表时的边框高亮，提升质感
+                                    st.plotly_chart(fig_net, use_container_width=True, config={'displayModeBar': False})
+                                else:
+                                    st.info("数据量不足，无法生成网络图。")
