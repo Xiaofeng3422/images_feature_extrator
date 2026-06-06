@@ -16,7 +16,7 @@ from pyvis.network import Network
 import streamlit.components.v1 as components
 
 # ================= 1. 治愈系与科技蓝视觉配置 (沉浸式 UI) =================
-st.set_page_config(page_title="重智·心生态 | 影像聚类系统", page_icon="🌿", layout="wide")
+st.set_page_config(page_title="心生态 | 影像聚类系统", page_icon="🌿", layout="wide")
 
 st.markdown("""
     <style>
