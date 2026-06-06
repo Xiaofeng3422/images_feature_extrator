@@ -5,3 +5,4 @@ wordcloud
 plotly
 matplotlib
 networkx
+openpyxl
