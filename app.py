@@ -11,6 +11,7 @@ import os
 import matplotlib.pyplot as plt
 import networkx as nx
 import itertools
+import io  # 💡 新增：用于在内存中处理文件导出的库
 
 # ================= 1. 治愈系与科技蓝视觉配置 (沉浸式 UI) =================
 st.set_page_config(page_title="重智·心生态 | 影像聚类系统", page_icon="🌿", layout="wide")
@@ -34,12 +35,12 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🌿 重智·心生态 | 智能影像特征聚类系统")
+st.title("🌿 心生态 | 智能影像特征聚类系统")
 st.markdown("<p style='color:#666; font-size:16px;'>基于大语言模型视觉网络，深度解析图文心像，自动构建结构化心理生态图谱。</p>", unsafe_allow_html=True)
 
 # ================= 2. 后台配置（👇 请在此处替换为您的真实数据 👇） =================
-COZE_API_KEY = "pat_xxxxxxxxxxxxxxxxxxxx"  # 👈 替换为真实 Token
-WORKFLOW_ID = "7645xxxxxxxxxxxx"         # 👈 替换为真实 工作流 ID
+COZE_API_KEY = "pat_xtIkaIOtOvrwtxLl3VUp3uy2XmqPmDUmRg9u6ePR9oBaOfDIC11xILn8yvQ0QQAW"  # 👈 替换为真实 Token
+WORKFLOW_ID = "7645903007834996762"         # 👈 替换为真实 工作流 ID
 UPLOAD_URL = "https://api.coze.cn/v1/files/upload"
 COZE_URL = "https://api.coze.cn/v1/workflow/run"
 
@@ -105,28 +106,24 @@ with tab1:
             csv_data = pd.DataFrame(results).to_csv(index=False).encode('utf-8-sig')
             st.download_button("📥 导出特征矩阵库 (CSV)", data=csv_data, file_name="心生态_特征矩阵库.csv", mime="text/csv")
 
-# ----------------- 通道二：离线极速渲染 (兼容 CSV/Excel + 共现网络图) -----------------
+# ----------------- 通道二：离线极速渲染 (兼容 CSV/Excel + 双图表导出) -----------------
 with tab2:
     st.markdown("#### 2. 多维生态全景映射")
-    # 💡 升级：同时支持 CSV 和 Excel 文件
     uploaded_file = st.file_uploader("请导入已沉淀的特征矩阵库 (支持 CSV 或 Excel 格式)", type=["csv", "xlsx", "xls"])
     
     if uploaded_file:
         st.toast("✅ 数据源接入成功，渲染引擎已就绪。", icon="🔋")
         try:
-            # 💡 智能判断文件后缀并使用对应的引擎读取
             if uploaded_file.name.endswith('.csv'):
                 df = pd.read_csv(uploaded_file)
             else:
                 df = pd.read_excel(uploaded_file)
                 
-            # 清洗隐形字符，防止表头识别失败
             df.columns = [str(col).strip().replace('\ufeff', '') for col in df.columns]
             
             with st.expander("👁️ 查看源数据矩阵明细"):
                 st.dataframe(df, use_container_width=True)
             
-            # 智能兼容新老表头
             status_col = next((c for c in ["处理状态", "状态"] if c in df.columns), None)
             keyword_col = next((c for c in ["核心特征组", "特征聚类词组"] if c in df.columns), None)
             img_col = next((c for c in ["影像名称", "图片名称"] if c in df.columns), None)
@@ -159,7 +156,7 @@ with tab2:
                                     urllib.request.urlretrieve("https://raw.githubusercontent.com/StellarCN/scp_zh/master/fonts/SimHei.ttf", font_path)
                                 except: font_path = None
                             
-                            # ================= 渲染左侧：词云图 =================
+                            # ================= 渲染左侧：静态词云图及导出 =================
                             with col_left:
                                 st.markdown("<div class='stat-box'><h4>☁️ 心境特征星云</h4></div>", unsafe_allow_html=True)
                                 word_counts = Counter(all_keywords)
@@ -170,8 +167,14 @@ with tab2:
                                 ax.imshow(wc, interpolation="bilinear")
                                 ax.axis("off")
                                 st.pyplot(fig_wc)
+                                
+                                # 💡 词云静态图导出逻辑
+                                img_buf = io.BytesIO()
+                                fig_wc.savefig(img_buf, format='png', transparent=True, bbox_inches='tight')
+                                img_buf.seek(0)
+                                st.download_button(label="💾 下载静态词云图 (PNG格式)", data=img_buf, file_name="心境特征星云.png", mime="image/png", use_container_width=True)
 
-                            # ================= 渲染右侧：共现神经网络图 =================
+                            # ================= 渲染右侧：动态共现网络图及导出 =================
                             with col_right:
                                 st.markdown("<div class='stat-box'><h4>🕸️ 核心特征心智网络</h4></div>", unsafe_allow_html=True)
                                 
@@ -233,6 +236,12 @@ with tab2:
                                                     yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
                                                     )
                                     st.plotly_chart(fig_net, use_container_width=True, config={'displayModeBar': False})
+                                    
+                                    # 💡 动态交互图导出逻辑
+                                    html_buf = io.StringIO()
+                                    fig_net.write_html(html_buf, include_plotlyjs="cdn", full_html=True)
+                                    html_buf.seek(0)
+                                    st.download_button(label="💾 下载动态交互网络图 (HTML格式)", data=html_buf.getvalue(), file_name="心智动态网络.html", mime="text/html", use_container_width=True)
                                 else:
                                     st.info("数据量不足，无法生成网络图。")
         except Exception as e:
