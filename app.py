@@ -145,6 +145,7 @@ with tab1:
             st.download_button("📥 导出特征矩阵库 (CSV)", data=csv, file_name="心生态_特征矩阵库.csv", mime="text/csv")
 
 # ----------------- 通道二：离线极速渲染 -----------------
+# ----------------- 通道二：离线极速渲染 -----------------
 with tab2:
     st.markdown("#### 2. 多维生态全景映射")
     uploaded_csv = st.file_uploader("请导入已沉淀的特征矩阵库 (CSV 格式)，系统将为您构建宏观生态图谱。", type=["csv"])
@@ -154,23 +155,28 @@ with tab2:
         try:
             df = pd.read_csv(uploaded_csv)
             
-            # 使用 Expander 把枯燥的数据表折叠起来，保持界面清爽
             with st.expander("👁️ 查看源数据矩阵明细"):
                 st.dataframe(df, use_container_width=True)
             
-            if "核心特征组" not in df.columns or "处理状态" not in df.columns:
-                st.error("⚠️ 数据源维度不匹配，请确保包含【处理状态】与【核心特征组】。")
+            # 💡 强悍的兼容机制：同时兼容旧版和新版表头
+            status_col = "处理状态" if "处理状态" in df.columns else ("状态" if "状态" in df.columns else None)
+            keyword_col = "核心特征组" if "核心特征组" in df.columns else ("特征聚类词组" if "特征聚类词组" in df.columns else None)
+            img_col = "影像名称" if "影像名称" in df.columns else ("图片名称" if "图片名称" in df.columns else None)
+            
+            if not status_col or not keyword_col:
+                st.error("⚠️ 数据源维度不匹配，请确保表中包含表示【状态】与【特征词】的列。")
             else:
                 if st.button("✨ 瞬间映射全景图谱"):
                     with st.spinner('正在为您生成词汇星云与热力映射矩阵...'):
-                        time.sleep(0.8) # 故意加一点极短的停顿，增强大屏展示时的期待感
+                        time.sleep(0.8) 
                         all_keywords = []
                         valid_results = []
                         
                         for _, row in df.iterrows():
-                            if str(row["处理状态"]) == "✅ 成功" and pd.notna(row["核心特征组"]):
-                                img_name = row["影像名称"] if "影像名称" in df.columns else f"样本_{_}"
-                                words_str = str(row["核心特征组"])
+                            # 💡 乱码免疫机制：只要包含"成功"两字就算过，无视前面的问号或表情符号
+                            if "成功" in str(row[status_col]) and pd.notna(row[keyword_col]):
+                                img_name = row[img_col] if img_col else f"样本_{_}"
+                                words_str = str(row[keyword_col])
                                 words = [w.strip() for w in words_str.split(',') if w.strip()]
                                 all_keywords.extend(words)
                                 valid_results.append({"name": img_name, "words": words})
@@ -194,18 +200,18 @@ with tab2:
                                 st.markdown("<div class='stat-box'><h4>☁️ 心境特征星云</h4></div>", unsafe_allow_html=True)
                                 word_counts = Counter(all_keywords)
                                 wc = WordCloud(font_path=font_path, background_color="rgba(255, 255, 255, 0)", mode="RGBA",
-                                               width=800, height=600, colormap="GnBu", max_words=80) # 改为更治愈的蓝绿渐变色系
+                                               width=800, height=600, colormap="GnBu", max_words=80) 
                                 wc.generate_from_frequencies(word_counts)
                                 
                                 fig_wc, ax = plt.subplots(figsize=(8, 6))
-                                fig_wc.patch.set_alpha(0) # 背景透明
+                                fig_wc.patch.set_alpha(0) 
                                 ax.imshow(wc, interpolation="bilinear")
                                 ax.axis("off")
                                 st.pyplot(fig_wc)
 
                             with col_right:
                                 st.markdown("<div class='stat-box'><h4>🔥 核心要素频次热力</h4></div>", unsafe_allow_html=True)
-                                top_15_words = [word for word, count in word_counts.most_common(12)] # 减少到12个，图表更精致
+                                top_15_words = [word for word, count in word_counts.most_common(12)] 
                                 
                                 heatmap_data = []
                                 for res in valid_results:
@@ -218,10 +224,9 @@ with tab2:
                                 if not df_heatmap.empty:
                                     df_heatmap.set_index("样本标号", inplace=True)
                                     fig_hm = px.imshow(df_heatmap, 
-                                                       color_continuous_scale="Teal", # 换成高级质感的 Teal 色系
+                                                       color_continuous_scale="Teal", 
                                                        aspect="auto",
                                                        labels=dict(x="要素维度", y="样本", color="触发律"))
-                                    # 去除背景网格，让界面更极简
                                     fig_hm.update_layout(margin=dict(l=10, r=10, t=10, b=10), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
                                     st.plotly_chart(fig_hm, use_container_width=True)
         except Exception as e:
