@@ -4,6 +4,7 @@ import json
 import time
 import pandas as pd
 from collections import Counter
+import plotly.graph_objects as go
 from wordcloud import WordCloud
 import urllib.request
 import os
@@ -113,8 +114,14 @@ with tab2:
     if uploaded_file:
         st.toast("✅ 数据源接入成功，渲染引擎已就绪。", icon="🔋")
         try:
-            if uploaded_file.name.endswith('.csv'): df = pd.read_csv(uploaded_file)
-            else: df = pd.read_excel(uploaded_file)
+            file_name_lower = uploaded_file.name.lower()
+            if file_name_lower.endswith('.csv'): 
+                df = pd.read_csv(uploaded_file)
+            elif file_name_lower.endswith(('.xlsx', '.xls')): 
+                df = pd.read_excel(uploaded_file)
+            else:
+                st.error("⚠️ 仅支持读取 CSV 或 Excel 格式的文件。")
+                st.stop()
                 
             df.columns = [str(col).strip().replace('\ufeff', '') for col in df.columns]
             with st.expander("👁️ 查看源数据矩阵明细"): st.dataframe(df, use_container_width=True)
@@ -147,13 +154,12 @@ with tab2:
                                 try: urllib.request.urlretrieve("https://raw.githubusercontent.com/StellarCN/scp_zh/master/fonts/SimHei.ttf", font_path)
                                 except: font_path = None
                             
-                            # ================= 渲染左侧：静态词云图及导出 =================
                             with col_left:
                                 st.markdown("<div class='stat-box'><h4>☁️ 心境特征星云</h4></div>", unsafe_allow_html=True)
                                 word_counts = Counter(all_keywords)
                                 wc = WordCloud(font_path=font_path, background_color="rgba(255,255,255,0)", mode="RGBA",
-                                               width=800, height=600, colormap="GnBu", max_words=80).generate_from_frequencies(word_counts)
-                                fig_wc, ax = plt.subplots(figsize=(8, 6))
+                                               width=800, height=650, colormap="GnBu", max_words=80).generate_from_frequencies(word_counts)
+                                fig_wc, ax = plt.subplots(figsize=(8, 6.5))
                                 fig_wc.patch.set_alpha(0) 
                                 ax.imshow(wc, interpolation="bilinear")
                                 ax.axis("off")
@@ -164,7 +170,6 @@ with tab2:
                                 img_buf.seek(0)
                                 st.download_button(label="💾 下载静态词云图 (PNG格式)", data=img_buf, file_name="心境特征星云.png", mime="image/png", use_container_width=True)
 
-                            # ================= 渲染右侧：交互式 PyVis 网络图 =================
                             with col_right:
                                 st.markdown("<div class='stat-box'><h4>🕸️ 核心特征心智网络</h4></div>", unsafe_allow_html=True)
                                 
@@ -180,19 +185,18 @@ with tab2:
                                 
                                 top_nodes = [w for w, c in node_weights.most_common(25)]
                                 
-                                # 💡 使用全新一代 PyVis 引擎构建高互交网络
-                                net = Network(height='400px', width='100%', bgcolor='white', font_color='#2c3e50')
+                                # 💡 网页内嵌版：高度拉伸至 650px，占据绝佳展示空间
+                                net = Network(height='650px', width='100%', bgcolor='white', font_color='#2c3e50')
                                 
                                 for node in top_nodes:
                                     freq = node_weights[node]
-                                    # 完美实现：大小随频次动态调整，悬浮显示中文字段，定制橘色特效
                                     net.add_node(
                                         node, label=node, title=f"📌【{node}】出现频次: {freq} 次",
                                         size=freq * 2.5 + 10,
                                         color={
                                             'background': '#5c8fb9', 'border': '#ffffff',
-                                            'highlight': {'background': '#ff9800', 'border': '#e65100'}, # 点击变深橘色
-                                            'hover': {'background': '#ffb74d', 'border': '#f57c00'}       # 悬浮变浅橘色
+                                            'highlight': {'background': '#ff9800', 'border': '#e65100'}, 
+                                            'hover': {'background': '#ffb74d', 'border': '#f57c00'}      
                                         },
                                         font={'color': '#2c3e50', 'size': 16, 'face': 'sans-serif'}
                                     )
@@ -201,22 +205,12 @@ with tab2:
                                     if w1 in top_nodes and w2 in top_nodes and weight >= 1:
                                         net.add_edge(w1, w2, value=weight, color={'color':'rgba(107, 163, 184, 0.4)', 'highlight':'#ff9800', 'hover':'#ffb74d'})
                                 
-                                # 开启物理引擎、悬浮特效及聚光灯点击特效
                                 net.set_options("""
                                 var options = {
-                                  "interaction": {
-                                    "hover": true,
-                                    "hoverConnectedEdges": true,
-                                    "selectConnectedEdges": true
-                                  },
+                                  "interaction": { "hover": true, "hoverConnectedEdges": true, "selectConnectedEdges": true },
                                   "physics": {
-                                    "forceAtlas2Based": {
-                                      "gravitationalConstant": -100,
-                                      "centralGravity": 0.015,
-                                      "springLength": 100
-                                    },
-                                    "minVelocity": 0.75,
-                                    "solver": "forceAtlas2Based"
+                                    "forceAtlas2Based": { "gravitationalConstant": -100, "centralGravity": 0.015, "springLength": 100 },
+                                    "minVelocity": 0.75, "solver": "forceAtlas2Based"
                                   }
                                 }
                                 """)
@@ -224,11 +218,17 @@ with tab2:
                                 html_file_path = "pyvis_network.html"
                                 net.save_graph(html_file_path)
                                 
-                                # 读取 HTML 并在网页中渲染
                                 with open(html_file_path, 'r', encoding='utf-8') as f:
                                     html_data = f.read()
-                                components.html(html_data, height=410)
                                 
-                                st.download_button(label="💾 下载动态交互网络图 (HTML格式)", data=html_data, file_name="心智动态网络.html", mime="text/html", use_container_width=True)
+                                # 💡 扩大 Streamlit 内置组件的显示范围
+                                components.html(html_data, height=670)
+                                
+                                # 💡 全屏魔法：自动注入移动端适配标签和全屏高度 100vh
+                                export_html = html_data.replace('height: 650px;', 'height: 100vh; margin: 0; padding: 0;')
+                                meta_tag = '<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n<style>body{margin:0;padding:0;overflow:hidden;}</style>'
+                                export_html = export_html.replace('<head>', f'<head>\n{meta_tag}')
+                                
+                                st.download_button(label="💾 下载动态交互网络图 (HTML格式)", data=export_html, file_name="心智动态网络_全屏版.html", mime="text/html", use_container_width=True)
         except Exception as e:
             st.error(f"⚠️ 文件读取或渲染异常，请检查: {e}")
