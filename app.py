@@ -4,14 +4,15 @@ import json
 import time
 import pandas as pd
 from collections import Counter
-import plotly.graph_objects as go
 from wordcloud import WordCloud
 import urllib.request
 import os
 import matplotlib.pyplot as plt
 import networkx as nx
 import itertools
-import io  # 💡 新增：用于在内存中处理文件导出的库
+import io
+from pyvis.network import Network
+import streamlit.components.v1 as components
 
 # ================= 1. 治愈系与科技蓝视觉配置 (沉浸式 UI) =================
 st.set_page_config(page_title="重智·心生态 | 影像聚类系统", page_icon="🌿", layout="wide")
@@ -28,17 +29,17 @@ st.markdown("""
     }
     .stButton>button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(74, 117, 153, 0.5); }
     .stat-box {
-        background-color: rgba(255, 255, 255, 0.9); padding: 25px; border-radius: 15px;
+        background-color: rgba(255, 255, 255, 1); padding: 25px; border-radius: 15px;
         box-shadow: 0 8px 30px rgba(0,0,0,0.04); text-align: center; border-top: 5px solid #8eb0a4;
     }
     #MainMenu {visibility: hidden;} footer {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🌿 心生态 | 智能影像特征聚类系统")
+st.title("🌿 重智·心生态 | 智能影像特征聚类系统")
 st.markdown("<p style='color:#666; font-size:16px;'>基于大语言模型视觉网络，深度解析图文心像，自动构建结构化心理生态图谱。</p>", unsafe_allow_html=True)
 
-# ================= 2. 后台配置（👇 请在此处替换为您的真实数据 👇） =================
+# ================= 2. 后台配置（👇 记得替换为真实数据 👇） =================
 COZE_API_KEY = "pat_xtIkaIOtOvrwtxLl3VUp3uy2XmqPmDUmRg9u6ePR9oBaOfDIC11xILn8yvQ0QQAW"  # 👈 替换为真实 Token
 WORKFLOW_ID = "7645903007834996762"         # 👈 替换为真实 工作流 ID
 UPLOAD_URL = "https://api.coze.cn/v1/files/upload"
@@ -73,7 +74,6 @@ def call_coze_workflow(file_id):
 st.markdown("---")
 tab1, tab2 = st.tabs(["✨ 视觉解析提取室 (实机演示)", "🌌 生态图谱渲染舱 (极速生成)"])
 
-# ----------------- 通道一：提取与展示 -----------------
 with tab1:
     st.markdown("#### 1. 影像资料上传")
     uploaded_images = st.file_uploader("支持框选或拖拽上传，系统将通过视觉模型逐一解构影像特征。", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
@@ -106,7 +106,6 @@ with tab1:
             csv_data = pd.DataFrame(results).to_csv(index=False).encode('utf-8-sig')
             st.download_button("📥 导出特征矩阵库 (CSV)", data=csv_data, file_name="心生态_特征矩阵库.csv", mime="text/csv")
 
-# ----------------- 通道二：离线极速渲染 (兼容 CSV/Excel + 双图表导出) -----------------
 with tab2:
     st.markdown("#### 2. 多维生态全景映射")
     uploaded_file = st.file_uploader("请导入已沉淀的特征矩阵库 (支持 CSV 或 Excel 格式)", type=["csv", "xlsx", "xls"])
@@ -114,15 +113,11 @@ with tab2:
     if uploaded_file:
         st.toast("✅ 数据源接入成功，渲染引擎已就绪。", icon="🔋")
         try:
-            if uploaded_file.name.endswith('.csv'):
-                df = pd.read_csv(uploaded_file)
-            else:
-                df = pd.read_excel(uploaded_file)
+            if uploaded_file.name.endswith('.csv'): df = pd.read_csv(uploaded_file)
+            else: df = pd.read_excel(uploaded_file)
                 
             df.columns = [str(col).strip().replace('\ufeff', '') for col in df.columns]
-            
-            with st.expander("👁️ 查看源数据矩阵明细"):
-                st.dataframe(df, use_container_width=True)
+            with st.expander("👁️ 查看源数据矩阵明细"): st.dataframe(df, use_container_width=True)
             
             status_col = next((c for c in ["处理状态", "状态"] if c in df.columns), None)
             keyword_col = next((c for c in ["核心特征组", "特征聚类词组"] if c in df.columns), None)
@@ -135,7 +130,6 @@ with tab2:
                     with st.spinner('正在为您生成词汇星云与心智神经网络...'):
                         time.sleep(0.8) 
                         all_keywords, valid_results = [], []
-                        
                         for _, row in df.iterrows():
                             if "成功" in str(row[status_col]) and pd.notna(row[keyword_col]):
                                 img_name = row[img_col] if img_col else f"样本_{_}"
@@ -143,17 +137,14 @@ with tab2:
                                 all_keywords.extend(words)
                                 valid_results.append({"name": img_name, "words": words})
                         
-                        if not all_keywords:
-                            st.warning("⚠️ 生态库中暂无有效的特征词组。")
+                        if not all_keywords: st.warning("⚠️ 生态库中暂无有效的特征词组。")
                         else:
                             st.toast("🎉 图谱渲染完毕！", icon="🎨")
                             st.markdown("<br>", unsafe_allow_html=True)
                             col_left, col_right = st.columns(2)
-                            
                             font_path = "SimHei.ttf"
                             if not os.path.exists(font_path):
-                                try:
-                                    urllib.request.urlretrieve("https://raw.githubusercontent.com/StellarCN/scp_zh/master/fonts/SimHei.ttf", font_path)
+                                try: urllib.request.urlretrieve("https://raw.githubusercontent.com/StellarCN/scp_zh/master/fonts/SimHei.ttf", font_path)
                                 except: font_path = None
                             
                             # ================= 渲染左侧：静态词云图及导出 =================
@@ -168,19 +159,17 @@ with tab2:
                                 ax.axis("off")
                                 st.pyplot(fig_wc)
                                 
-                                # 💡 词云静态图导出逻辑
                                 img_buf = io.BytesIO()
                                 fig_wc.savefig(img_buf, format='png', transparent=True, bbox_inches='tight')
                                 img_buf.seek(0)
                                 st.download_button(label="💾 下载静态词云图 (PNG格式)", data=img_buf, file_name="心境特征星云.png", mime="image/png", use_container_width=True)
 
-                            # ================= 渲染右侧：动态共现网络图及导出 =================
+                            # ================= 渲染右侧：交互式 PyVis 网络图 =================
                             with col_right:
                                 st.markdown("<div class='stat-box'><h4>🕸️ 核心特征心智网络</h4></div>", unsafe_allow_html=True)
                                 
                                 co_occurrences = {}
                                 node_weights = Counter()
-                                
                                 for res in valid_results:
                                     words = res["words"]
                                     for w in words: node_weights[w] += 1
@@ -191,58 +180,55 @@ with tab2:
                                 
                                 top_nodes = [w for w, c in node_weights.most_common(25)]
                                 
-                                G = nx.Graph()
-                                for node in top_nodes: G.add_node(node, size=node_weights[node])
+                                # 💡 使用全新一代 PyVis 引擎构建高互交网络
+                                net = Network(height='400px', width='100%', bgcolor='white', font_color='#2c3e50')
+                                
+                                for node in top_nodes:
+                                    freq = node_weights[node]
+                                    # 完美实现：大小随频次动态调整，悬浮显示中文字段，定制橘色特效
+                                    net.add_node(
+                                        node, label=node, title=f"📌【{node}】出现频次: {freq} 次",
+                                        size=freq * 2.5 + 10,
+                                        color={
+                                            'background': '#5c8fb9', 'border': '#ffffff',
+                                            'highlight': {'background': '#ff9800', 'border': '#e65100'}, # 点击变深橘色
+                                            'hover': {'background': '#ffb74d', 'border': '#f57c00'}       # 悬浮变浅橘色
+                                        },
+                                        font={'color': '#2c3e50', 'size': 16, 'face': 'sans-serif'}
+                                    )
                                     
                                 for (w1, w2), weight in co_occurrences.items():
                                     if w1 in top_nodes and w2 in top_nodes and weight >= 1:
-                                        G.add_edge(w1, w2, weight=weight)
-                                        
-                                if len(G.nodes) > 0:
-                                    pos = nx.spring_layout(G, k=0.8, iterations=50, seed=42)
-                                    edge_x, edge_y = [], []
-                                    for edge in G.edges():
-                                        x0, y0 = pos[edge[0]]
-                                        x1, y1 = pos[edge[1]]
-                                        edge_x.extend([x0, x1, None])
-                                        edge_y.extend([y0, y1, None])
-                                        
-                                    edge_trace = go.Scatter(
-                                        x=edge_x, y=edge_y,
-                                        line=dict(width=1.2, color='rgba(107, 163, 184, 0.4)'), 
-                                        hoverinfo='none', mode='lines')
-                                        
-                                    node_x, node_y, node_text, node_size = [], [], [], []
-                                    for node in G.nodes():
-                                        x, y = pos[node]
-                                        node_x.append(x); node_y.append(y); node_text.append(node)
-                                        node_size.append(G.nodes[node]['size'] * 3.5 + 12) 
-                                        
-                                    node_trace = go.Scatter(
-                                        x=node_x, y=node_y, mode='markers+text',
-                                        text=node_text, textposition="top center", hoverinfo='text',
-                                        textfont=dict(family="SimHei, sans-serif", size=13, color="#2c3e50"),
-                                        marker=dict(
-                                            showscale=False, color='#5c8fb9', size=node_size,
-                                            line_width=2, line_color='white'
-                                        ))
-                                            
-                                    fig_net = go.Figure(data=[edge_trace, node_trace],
-                                                 layout=go.Layout(
-                                                    showlegend=False, hovermode='closest',
-                                                    margin=dict(b=10,l=10,r=10,t=10),
-                                                    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-                                                    xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                                                    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
-                                                    )
-                                    st.plotly_chart(fig_net, use_container_width=True, config={'displayModeBar': False})
-                                    
-                                    # 💡 动态交互图导出逻辑
-                                    html_buf = io.StringIO()
-                                    fig_net.write_html(html_buf, include_plotlyjs="cdn", full_html=True)
-                                    html_buf.seek(0)
-                                    st.download_button(label="💾 下载动态交互网络图 (HTML格式)", data=html_buf.getvalue(), file_name="心智动态网络.html", mime="text/html", use_container_width=True)
-                                else:
-                                    st.info("数据量不足，无法生成网络图。")
+                                        net.add_edge(w1, w2, value=weight, color={'color':'rgba(107, 163, 184, 0.4)', 'highlight':'#ff9800', 'hover':'#ffb74d'})
+                                
+                                # 开启物理引擎、悬浮特效及聚光灯点击特效
+                                net.set_options("""
+                                var options = {
+                                  "interaction": {
+                                    "hover": true,
+                                    "hoverConnectedEdges": true,
+                                    "selectConnectedEdges": true
+                                  },
+                                  "physics": {
+                                    "forceAtlas2Based": {
+                                      "gravitationalConstant": -100,
+                                      "centralGravity": 0.015,
+                                      "springLength": 100
+                                    },
+                                    "minVelocity": 0.75,
+                                    "solver": "forceAtlas2Based"
+                                  }
+                                }
+                                """)
+                                
+                                html_file_path = "pyvis_network.html"
+                                net.save_graph(html_file_path)
+                                
+                                # 读取 HTML 并在网页中渲染
+                                with open(html_file_path, 'r', encoding='utf-8') as f:
+                                    html_data = f.read()
+                                components.html(html_data, height=410)
+                                
+                                st.download_button(label="💾 下载动态交互网络图 (HTML格式)", data=html_data, file_name="心智动态网络.html", mime="text/html", use_container_width=True)
         except Exception as e:
-            st.error(f"⚠️ 文件流读取异常，请检查文件格式是否损坏: {e}")
+            st.error(f"⚠️ 文件读取或渲染异常，请检查: {e}")
